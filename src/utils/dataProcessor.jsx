@@ -30,7 +30,7 @@ export const readExcelFile = (file, type, setUploadProgress) => {
   });
 };
 
-// Function to process data comparison
+// Function to process data comparison with automatic sorting (NEW data first)
 export const processDataComparison = (dataOld, dataNew) => {
   const idpelOldSet = new Set(dataOld.map(row => String(row.IDPEL)));
   const processedData = dataNew.map(row => ({
@@ -38,19 +38,26 @@ export const processDataComparison = (dataOld, dataNew) => {
     _IS_NEW_: !idpelOldSet.has(String(row.IDPEL))
   }));
 
-  const newDataOnly = processedData.filter(row => row._IS_NEW_);
+  // Sort data: NEW data first, then OLD data
+  const sortedData = processedData.sort((a, b) => {
+    // New data (true) should come before old data (false)
+    if (a._IS_NEW_ && !b._IS_NEW_) return -1;
+    if (!a._IS_NEW_ && b._IS_NEW_) return 1;
+    return 0; // Keep original order for same type
+  });
+
+  const newDataOnly = sortedData.filter(row => row._IS_NEW_);
 
   return {
-    allData: processedData,
+    allData: sortedData, // Already sorted with new data first
     newData: newDataOnly,
     totalNew: newDataOnly.length,
-    totalAll: processedData.length
+    totalAll: sortedData.length
   };
 };
 
-// Function to download Excel with GREEN HIGHLIGHTING using ExcelJS
+// Enhanced function to download Excel with GREEN HIGHLIGHTING using ExcelJS
 export const downloadExcelWithGreenHighlight = async (data, filename) => {
-  // Load ExcelJS library
   const loadExcelJS = () => {
     return new Promise((resolve, reject) => {
       if (window.ExcelJS) {
@@ -59,7 +66,7 @@ export const downloadExcelWithGreenHighlight = async (data, filename) => {
       }
       
       const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
       script.onload = () => {
         resolve(window.ExcelJS);
       };
@@ -75,8 +82,15 @@ export const downloadExcelWithGreenHighlight = async (data, filename) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Data');
 
+    // Sort data to ensure new data appears first
+    const sortedData = [...data].sort((a, b) => {
+      if (a._IS_NEW_ && !b._IS_NEW_) return -1;
+      if (!a._IS_NEW_ && b._IS_NEW_) return 1;
+      return 0;
+    });
+
     // Prepare data (remove internal _IS_NEW_ field)
-    const exportData = data.map(row => {
+    const exportData = sortedData.map(row => {
       const { _IS_NEW_, ...cleanRow } = row;
       return cleanRow;
     });
@@ -85,91 +99,123 @@ export const downloadExcelWithGreenHighlight = async (data, filename) => {
 
     // Add headers
     const headers = Object.keys(exportData[0]);
-    worksheet.addRow(headers);
+    const headerRow = worksheet.addRow(headers);
 
-    // Style header row
-    const headerRow = worksheet.getRow(1);
+    // Style header row with enhanced styling
     headerRow.eachCell((cell) => {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF4472C4' } // Blue header
+        fgColor: { argb: 'FF1F2937' } // Dark gray header
       };
       cell.font = {
         color: { argb: 'FFFFFFFF' }, // White text
         bold: true,
-        size: 12
+        size: 12,
+        name: 'Segoe UI'
       };
       cell.alignment = {
         horizontal: 'center',
         vertical: 'middle'
       };
       cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' }
+        top: { style: 'thin', color: { argb: 'FF374151' } },
+        left: { style: 'thin', color: { argb: 'FF374151' } },
+        bottom: { style: 'thin', color: { argb: 'FF374151' } },
+        right: { style: 'thin', color: { argb: 'FF374151' } }
       };
     });
 
-    // Add data rows with conditional formatting
+    // Set header row height
+    headerRow.height = 25;
+
+    // Add data rows with enhanced conditional formatting
     exportData.forEach((rowData, index) => {
       const row = worksheet.addRow(Object.values(rowData));
-      const isNewData = data[index]._IS_NEW_;
+      const isNewData = sortedData[index]._IS_NEW_;
       
-      // Apply green highlighting to new data rows
+      // Apply enhanced green highlighting to new data rows
       if (isNewData) {
         row.eachCell((cell) => {
           cell.fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'FF92D050' } // Light green background
+            fgColor: { argb: 'FF10B981' } // Bright emerald green
           };
           cell.font = {
-            color: { argb: 'FF000000' }, // Black text
+            color: { argb: 'FFFFFFFF' }, // White text for better contrast
             bold: true,
-            size: 11
+            size: 11,
+            name: 'Segoe UI'
           };
           cell.border = {
-            top: { style: 'thin' },
-            left: { style: 'thin' },
-            bottom: { style: 'thin' },
-            right: { style: 'thin' }
+            top: { style: 'thin', color: { argb: 'FF059669' } },
+            left: { style: 'thin', color: { argb: 'FF059669' } },
+            bottom: { style: 'thin', color: { argb: 'FF059669' } },
+            right: { style: 'thin', color: { argb: 'FF059669' } }
           };
         });
+        // Set row height for new data
+        row.height = 20;
       } else {
-        // Style for existing data
+        // Enhanced styling for existing data
         row.eachCell((cell) => {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF9FAFB' } // Very light gray background
+          };
           cell.font = {
-            color: { argb: 'FF000000' },
-            size: 11
+            color: { argb: 'FF374151' }, // Dark gray text
+            size: 11,
+            name: 'Segoe UI'
           };
           cell.border = {
-            top: { style: 'thin' },
-            left: { style: 'thin' },
-            bottom: { style: 'thin' },
-            right: { style: 'thin' }
+            top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
           };
         });
+        row.height = 18;
       }
     });
 
-    // Auto-fit columns
-    worksheet.columns.forEach(column => {
+    // Enhanced auto-fit columns with better sizing
+    worksheet.columns.forEach((column, index) => {
       let maxLength = 0;
-      column.eachCell({ includeEmpty: true }, (cell) => {
-        const columnLength = cell.value ? cell.value.toString().length : 10;
-        if (columnLength > maxLength) {
-          maxLength = columnLength;
+      const columnHeader = headers[index];
+      
+      // Consider header length
+      maxLength = Math.max(maxLength, columnHeader.length);
+      
+      // Check each cell in the column
+      column.eachCell({ includeEmpty: false }, (cell) => {
+        const cellValue = cell.value ? cell.value.toString() : '';
+        if (cellValue.length > maxLength) {
+          maxLength = cellValue.length;
         }
       });
-      column.width = Math.min(Math.max(maxLength + 2, 10), 50);
+      
+      // Set column width with proper bounds and padding
+      column.width = Math.min(Math.max(maxLength + 3, 12), 60);
     });
 
     // Add freeze panes (freeze first row)
     worksheet.views = [
-      { state: 'frozen', xSplit: 0, ySplit: 1 }
+      { 
+        state: 'frozen', 
+        xSplit: 0, 
+        ySplit: 1,
+        topLeftCell: 'A2'
+      }
     ];
+
+    // Add worksheet protection (optional)
+    worksheet.protection = {
+      selectLockedCells: false,
+      selectUnlockedCells: true
+    };
 
     // Generate and download file
     const buffer = await workbook.xlsx.writeBuffer();
@@ -181,18 +227,22 @@ export const downloadExcelWithGreenHighlight = async (data, filename) => {
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
     
-    console.log('✅ File berhasil di-download dengan highlighting hijau!');
+    console.log('✅ File berhasil di-download dengan highlighting hijau dan sorting otomatis!');
+    return true;
   } catch (error) {
     console.error('❌ Error creating Excel with highlighting:', error);
     // Fallback to basic download
-    downloadExcelBasic(data, filename);
+    return downloadExcelBasic(data, filename);
   }
 };
 
-// Function to download Excel with STATUS column + GREEN HIGHLIGHT
+// Enhanced function to download Excel with STATUS column + GREEN HIGHLIGHT
 export const downloadExcelWithStatusAndHighlight = async (data, filename) => {
   const loadExcelJS = () => {
     return new Promise((resolve, reject) => {
@@ -202,7 +252,7 @@ export const downloadExcelWithStatusAndHighlight = async (data, filename) => {
       }
       
       const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
       script.onload = () => {
         resolve(window.ExcelJS);
       };
@@ -217,11 +267,18 @@ export const downloadExcelWithStatusAndHighlight = async (data, filename) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Data');
 
+    // Sort data to ensure new data appears first
+    const sortedData = [...data].sort((a, b) => {
+      if (a._IS_NEW_ && !b._IS_NEW_) return -1;
+      if (!a._IS_NEW_ && b._IS_NEW_) return 1;
+      return 0;
+    });
+
     // Prepare data WITH status column
-    const exportData = data.map(row => {
+    const exportData = sortedData.map(row => {
       const { _IS_NEW_, ...cleanRow } = row;
       return {
-        'STATUS': _IS_NEW_ ? 'DATA BARU' : 'DATA LAMA',
+        'STATUS': _IS_NEW_ ? '🆕 DATA BARU' : '📋 DATA LAMA',
         ...cleanRow
       };
     });
@@ -230,82 +287,97 @@ export const downloadExcelWithStatusAndHighlight = async (data, filename) => {
 
     // Add headers
     const headers = Object.keys(exportData[0]);
-    worksheet.addRow(headers);
+    const headerRow = worksheet.addRow(headers);
 
     // Style header row
-    const headerRow = worksheet.getRow(1);
     headerRow.eachCell((cell) => {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF4472C4' } // Blue header
+        fgColor: { argb: 'FF1F2937' } // Dark header
       };
       cell.font = {
         color: { argb: 'FFFFFFFF' },
         bold: true,
-        size: 12
+        size: 12,
+        name: 'Segoe UI'
       };
       cell.alignment = {
         horizontal: 'center',
         vertical: 'middle'
       };
       cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' }
+        top: { style: 'medium' },
+        left: { style: 'medium' },
+        bottom: { style: 'medium' },
+        right: { style: 'medium' }
       };
     });
 
-    // Add data rows
+    headerRow.height = 30;
+
+    // Add data rows with enhanced styling
     exportData.forEach((rowData, index) => {
       const row = worksheet.addRow(Object.values(rowData));
-      const isNewData = data[index]._IS_NEW_;
+      const isNewData = sortedData[index]._IS_NEW_;
       
       // Apply styling based on data status
       row.eachCell((cell, colNumber) => {
         if (isNewData) {
-          // Green highlighting for new data
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FF92D050' } // Light green
-          };
-          cell.font = {
-            color: { argb: 'FF000000' },
-            bold: true,
-            size: 11
-          };
-        } else {
-          // Normal styling for existing data
-          cell.font = {
-            color: { argb: 'FF666666' },
-            size: 11
-          };
-        }
-        
-        // Special styling for STATUS column (first column)
-        if (colNumber === 1) {
-          if (isNewData) {
+          // Enhanced green highlighting for new data
+          if (colNumber === 1) {
+            // Special styling for STATUS column (first column) - darker green
             cell.fill = {
               type: 'pattern',
               pattern: 'solid',
-              fgColor: { argb: 'FF00B050' } // Darker green for status
+              fgColor: { argb: 'FF059669' } // Darker emerald
             };
             cell.font = {
               color: { argb: 'FFFFFFFF' }, // White text
               bold: true,
-              size: 11
+              size: 11,
+              name: 'Segoe UI'
             };
           } else {
+            // Light green for other columns
             cell.fill = {
               type: 'pattern',
               pattern: 'solid',
-              fgColor: { argb: 'FFBFBFBF' } // Gray for old data
+              fgColor: { argb: 'FF10B981' } // Bright emerald
             };
             cell.font = {
-              color: { argb: 'FF000000' },
-              size: 11
+              color: { argb: 'FFFFFFFF' }, // White text
+              bold: true,
+              size: 11,
+              name: 'Segoe UI'
+            };
+          }
+        } else {
+          // Styling for existing data
+          if (colNumber === 1) {
+            // Gray styling for STATUS column
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FF9CA3AF' } // Medium gray
+            };
+            cell.font = {
+              color: { argb: 'FF1F2937' }, // Dark text
+              bold: true,
+              size: 11,
+              name: 'Segoe UI'
+            };
+          } else {
+            // Light styling for other columns
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFF3F4F6' } // Very light gray
+            };
+            cell.font = {
+              color: { argb: 'FF4B5563' }, // Medium gray text
+              size: 11,
+              name: 'Segoe UI'
             };
           }
         }
@@ -317,23 +389,40 @@ export const downloadExcelWithStatusAndHighlight = async (data, filename) => {
           right: { style: 'thin' }
         };
       });
+
+      row.height = isNewData ? 22 : 20;
     });
 
-    // Auto-fit columns
-    worksheet.columns.forEach(column => {
+    // Enhanced auto-fit columns
+    worksheet.columns.forEach((column, index) => {
       let maxLength = 0;
-      column.eachCell({ includeEmpty: true }, (cell) => {
-        const columnLength = cell.value ? cell.value.toString().length : 10;
-        if (columnLength > maxLength) {
-          maxLength = columnLength;
+      const columnHeader = headers[index];
+      
+      maxLength = Math.max(maxLength, columnHeader.length);
+      
+      column.eachCell({ includeEmpty: false }, (cell) => {
+        const cellValue = cell.value ? cell.value.toString() : '';
+        if (cellValue.length > maxLength) {
+          maxLength = cellValue.length;
         }
       });
-      column.width = Math.min(Math.max(maxLength + 2, 10), 50);
+      
+      // Special width for STATUS column
+      if (index === 0) {
+        column.width = 15; // Fixed width for STATUS column
+      } else {
+        column.width = Math.min(Math.max(maxLength + 3, 12), 60);
+      }
     });
 
-    // Freeze panes
+    // Freeze panes (first row and first column)
     worksheet.views = [
-      { state: 'frozen', xSplit: 1, ySplit: 1 } // Freeze first row and first column
+      { 
+        state: 'frozen', 
+        xSplit: 1, 
+        ySplit: 1,
+        topLeftCell: 'B2'
+      }
     ];
 
     // Generate and download
@@ -346,47 +435,21 @@ export const downloadExcelWithStatusAndHighlight = async (data, filename) => {
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
     
-    console.log('✅ File berhasil di-download dengan status dan highlighting!');
+    console.log('✅ File berhasil di-download dengan status dan highlighting yang enhanced!');
+    return true;
   } catch (error) {
     console.error('❌ Error:', error);
-    downloadExcelBasic(data, filename);
+    return downloadExcelBasic(data, filename);
   }
 };
 
-// Fallback basic download function
-export const downloadExcelBasic = (data, filename) => {
-  const script = document.createElement('script');
-  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-  script.onload = () => {
-    const exportData = data.map(row => {
-      const { _IS_NEW_, ...cleanRow } = row;
-      return {
-        'STATUS': row._IS_NEW_ ? 'DATA BARU' : 'DATA LAMA',
-        ...cleanRow
-      };
-    });
-
-    const wb = window.XLSX.utils.book_new();
-    const ws = window.XLSX.utils.json_to_sheet(exportData);
-    window.XLSX.utils.book_append_sheet(wb, ws, "Data");
-    window.XLSX.writeFile(wb, filename);
-  };
-  document.head.appendChild(script);
-};
-
-// Original download function (kept for compatibility)
-export const downloadExcel = (data, filename, highlightNew = false) => {
-  if (highlightNew) {
-    downloadExcelWithGreenHighlight(data, filename);
-  } else {
-    downloadExcelBasic(data, filename);
-  }
-};
-
-// Function to download with separate sheets
+// Enhanced function to download with separate sheets
 export const downloadExcelSeparateSheets = async (data, filename) => {
   const loadExcelJS = () => {
     return new Promise((resolve, reject) => {
@@ -396,7 +459,7 @@ export const downloadExcelSeparateSheets = async (data, filename) => {
       }
       
       const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
       script.onload = () => {
         resolve(window.ExcelJS);
       };
@@ -409,65 +472,137 @@ export const downloadExcelSeparateSheets = async (data, filename) => {
     const ExcelJS = await loadExcelJS();
     const workbook = new ExcelJS.Workbook();
     
+    // Sort data first
+    const sortedData = [...data].sort((a, b) => {
+      if (a._IS_NEW_ && !b._IS_NEW_) return -1;
+      if (!a._IS_NEW_ && b._IS_NEW_) return 1;
+      return 0;
+    });
+    
     // Sheet 1: All data with highlighting
-    const wsAll = workbook.addWorksheet('Semua Data');
-    const allData = data.map(row => {
+    const wsAll = workbook.addWorksheet('📊 Semua Data');
+    const allData = sortedData.map(row => {
       const { _IS_NEW_, ...cleanRow } = row;
       return cleanRow;
     });
     
     if (allData.length > 0) {
-      wsAll.addRow(Object.keys(allData[0]));
+      const headers = Object.keys(allData[0]);
+      const headerRow = wsAll.addRow(headers);
+      
+      // Style header
+      headerRow.eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
+        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12 };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
+      
       allData.forEach((rowData, index) => {
         const row = wsAll.addRow(Object.values(rowData));
-        if (data[index]._IS_NEW_) {
+        if (sortedData[index]._IS_NEW_) {
           row.eachCell((cell) => {
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FF92D050' }
-            };
-            cell.font = { bold: true };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+            cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
           });
         }
+      });
+      
+      // Auto-fit columns
+      wsAll.columns.forEach(column => {
+        let maxLength = 0;
+        column.eachCell({ includeEmpty: true }, (cell) => {
+          const columnLength = cell.value ? cell.value.toString().length : 10;
+          if (columnLength > maxLength) {
+            maxLength = columnLength;
+          }
+        });
+        column.width = Math.min(Math.max(maxLength + 2, 12), 50);
       });
     }
     
     // Sheet 2: New data only
-    const newData = data.filter(row => row._IS_NEW_).map(row => {
+    const newData = sortedData.filter(row => row._IS_NEW_).map(row => {
       const { _IS_NEW_, ...cleanRow } = row;
       return cleanRow;
     });
     
     if (newData.length > 0) {
-      const wsNew = workbook.addWorksheet('Data Baru');
-      wsNew.addRow(Object.keys(newData[0]));
+      const wsNew = workbook.addWorksheet('🆕 Data Baru');
+      const headers = Object.keys(newData[0]);
+      const headerRow = wsNew.addRow(headers);
+      
+      // Style header
+      headerRow.eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
+        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12 };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
+      
       newData.forEach(rowData => {
         const row = wsNew.addRow(Object.values(rowData));
         row.eachCell((cell) => {
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FF92D050' }
-          };
-          cell.font = { bold: true };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+          cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
         });
+      });
+      
+      // Auto-fit columns
+      wsNew.columns.forEach(column => {
+        let maxLength = 0;
+        column.eachCell({ includeEmpty: true }, (cell) => {
+          const columnLength = cell.value ? cell.value.toString().length : 10;
+          if (columnLength > maxLength) {
+            maxLength = columnLength;
+          }
+        });
+        column.width = Math.min(Math.max(maxLength + 2, 12), 50);
       });
     }
     
-    // Sheet 3: Summary
-    const wsSummary = workbook.addWorksheet('Summary');
-    const summary = [
-      ['Keterangan', 'Jumlah'],
-      ['Total Data', data.length],
-      ['Data Baru', newData.length],
-      ['Data Lama', data.length - newData.length],
-      ['Persentase Data Baru', `${((newData.length / data.length) * 100).toFixed(2)}%`]
+    // Sheet 3: Enhanced Summary
+    const wsSummary = workbook.addWorksheet('📈 Summary');
+    const currentDate = new Date().toLocaleString('id-ID');
+    const newDataCount = sortedData.filter(row => row._IS_NEW_).length;
+    const oldDataCount = sortedData.length - newDataCount;
+    const percentage = sortedData.length > 0 ? ((newDataCount / sortedData.length) * 100).toFixed(2) : 0;
+    
+    const summaryData = [
+      ['📊 LAPORAN ANALISIS DATA', ''],
+      ['Tanggal Analisis', currentDate],
+      ['', ''],
+      ['📈 STATISTIK DATA', ''],
+      ['Total Data Keseluruhan', sortedData.length.toLocaleString()],
+      ['🆕 Data Baru Ditemukan', newDataCount.toLocaleString()],
+      ['📋 Data Lama', oldDataCount.toLocaleString()],
+      ['📊 Persentase Data Baru', `${percentage}%`],
+      ['', ''],
+      ['💡 KESIMPULAN', ''],
+      ['Status', newDataCount > 0 ? '✅ Data baru terdeteksi' : '⚠️ Tidak ada data baru'],
+      ['Rekomendasi', newDataCount > 0 ? 'Lakukan review dan validasi data baru' : 'Data sudah up-to-date'],
     ];
     
-    summary.forEach(row => {
-      wsSummary.addRow(row);
+    summaryData.forEach((rowData, index) => {
+      const row = wsSummary.addRow(rowData);
+      
+      // Style different types of rows
+      if (index === 0 || index === 3 || index === 9) {
+        // Header rows
+        row.eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
+          cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 14 };
+        });
+      } else if (rowData[0].includes('Data Baru') && newDataCount > 0) {
+        // Highlight new data count
+        row.eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+          cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+        });
+      }
     });
+    
+    // Set column widths for summary
+    wsSummary.getColumn(1).width = 30;
+    wsSummary.getColumn(2).width = 25;
 
     // Download file
     const buffer = await workbook.xlsx.writeBuffer();
@@ -479,14 +614,72 @@ export const downloadExcelSeparateSheets = async (data, filename) => {
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
     
+    console.log('✅ File multi-sheet berhasil di-download dengan enhanced formatting!');
+    return true;
+    
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Error:', error);
     // Fallback to basic method
-    downloadExcelBasic(data, filename);
+    return downloadExcelBasic(data, filename);
   }
+};
+
+// Improved fallback basic download function
+export const downloadExcelBasic = (data, filename) => {
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  script.onload = () => {
+    // Sort data first
+    const sortedData = [...data].sort((a, b) => {
+      if (a._IS_NEW_ && !b._IS_NEW_) return -1;
+      if (!a._IS_NEW_ && b._IS_NEW_) return 1;
+      return 0;
+    });
+
+    const exportData = sortedData.map(row => {
+      const { _IS_NEW_, ...cleanRow } = row;
+      return {
+        'STATUS': row._IS_NEW_ ? '🆕 BARU' : '📋 LAMA',
+        ...cleanRow
+      };
+    });
+
+    const wb = window.XLSX.utils.book_new();
+    const ws = window.XLSX.utils.json_to_sheet(exportData);
+    window.XLSX.utils.book_append_sheet(wb, ws, "Data");
+    window.XLSX.writeFile(wb, filename);
+    console.log('✅ File basic berhasil di-download dengan sorting!');
+  };
+  document.head.appendChild(script);
+};
+
+// Main download function with enhanced highlighting
+export const downloadExcel = (data, filename, highlightNew = false) => {
+  if (highlightNew) {
+    return downloadExcelWithGreenHighlight(data, filename);
+  } else {
+    return downloadExcelBasic(data, filename);
+  }
+};
+
+// Enhanced function to download ONLY new data with highlighting
+export const downloadNewDataOnly = async (data, filename) => {
+  // Filter only new data
+  const newDataOnly = data.filter(row => row._IS_NEW_);
+  
+  if (newDataOnly.length === 0) {
+    alert('Tidak ada data baru untuk didownload!');
+    return false;
+  }
+
+  // Use the enhanced highlighting function
+  return await downloadExcelWithGreenHighlight(newDataOnly, filename);
 };
 
 // Function to save processing history
