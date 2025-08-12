@@ -1,77 +1,100 @@
 import React from 'react';
-import { Upload, FileText, CheckCircle } from 'lucide-react';
+import { Upload, File, Check } from 'lucide-react';
 
-const FileUploadCard = ({ 
-  title, 
-  file, 
-  onFileSelect, 
-  uploadProgress, 
-  color = 'blue',
-  id 
-}) => {
+const FileUploadCard = ({ id, title, file, onFileSelect, uploadProgress, color, darkMode }) => {
   const colorClasses = {
     blue: {
       gradient: 'from-blue-500 to-cyan-500',
-      border: 'border-blue-400',
-      bg: 'bg-blue-50',
-      text: 'text-blue-500',
-      hover: 'hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600'
+      border: darkMode ? 'border-blue-500' : 'border-blue-300',
+      bg: darkMode ? 'bg-blue-900' : 'bg-blue-50',
+      text: darkMode ? 'text-blue-300' : 'text-blue-600'
     },
     purple: {
       gradient: 'from-purple-500 to-pink-500',
-      border: 'border-purple-400',
-      bg: 'bg-purple-50',
-      text: 'text-purple-500',
-      hover: 'hover:border-purple-400 hover:bg-purple-50 hover:text-purple-600'
+      border: darkMode ? 'border-purple-500' : 'border-purple-300',
+      bg: darkMode ? 'bg-purple-900' : 'bg-purple-50',
+      text: darkMode ? 'text-purple-300' : 'text-purple-600'
     }
   };
 
-  const colors = colorClasses[color];
+  const currentColor = colorClasses[color] || colorClasses.blue;
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
-      <div className="flex items-center mb-6">
-        <div className={`bg-gradient-to-r ${colors.gradient} p-3 rounded-xl mr-4`}>
-          <FileText className="h-6 w-6 text-white" />
+    <div className={`rounded-2xl p-8 shadow-lg border-2 border-dashed transition-all duration-300 hover:shadow-xl ${
+      file 
+        ? `${currentColor.border} ${currentColor.bg}` 
+        : darkMode 
+          ? 'border-gray-600 bg-gray-800 hover:border-gray-500' 
+          : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+    }`}>
+      <div className="text-center">
+        <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${
+          file 
+            ? `bg-gradient-to-r ${currentColor.gradient}` 
+            : darkMode 
+              ? 'bg-gray-700' 
+              : 'bg-gray-200'
+        }`}>
+          {file ? (
+            <Check className="h-8 w-8 text-white" />
+          ) : (
+            <Upload className={`h-8 w-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+          )}
         </div>
-        <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
+        
+        <h3 className={`text-xl font-bold mb-2 ${
+          file 
+            ? currentColor.text 
+            : darkMode 
+              ? 'text-gray-300' 
+              : 'text-gray-700'
+        }`}>
+          {title}
+        </h3>
+        
+        {file ? (
+          <div className="space-y-2">
+            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              {file.name}
+            </p>
+            <p className={`text-xs ${currentColor.text}`}>
+              ✅ File berhasil dipilih
+            </p>
+            {uploadProgress > 0 && uploadProgress < 100 && (
+              <div className={`w-full rounded-full h-2 mt-3 ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                <div 
+                  className={`h-2 rounded-full bg-gradient-to-r ${currentColor.gradient} transition-all duration-300`}
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              Pilih file Excel (.xlsx, .xls)
+            </p>
+            <input
+              type="file"
+              id={id}
+              accept=".xlsx,.xls"
+              onChange={onFileSelect}
+              className="hidden"
+            />
+            <label
+              htmlFor={id}
+              className={`inline-flex items-center px-6 py-3 rounded-xl font-medium transition-all duration-300 cursor-pointer ${
+                darkMode
+                  ? 'bg-gray-700 text-gray-200 hover:bg-gray-600 border border-gray-600'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+              }`}
+            >
+              <File className="h-4 w-4 mr-2" />
+              Browse File
+            </label>
+          </div>
+        )}
       </div>
-      
-      <div className={`border-2 border-dashed border-gray-300 rounded-xl p-8 text-center ${colors.hover} transition-all duration-300 group`}>
-        <input
-          type="file"
-          accept=".xlsx,.xls"
-          onChange={onFileSelect}
-          className="hidden"
-          id={id}
-        />
-        <label htmlFor={id} className="cursor-pointer">
-          <div className="group-hover:scale-110 transition-transform duration-300">
-            <Upload className={`mx-auto h-16 w-16 text-gray-400 group-hover:${colors.text} mb-4`} />
-          </div>
-          <p className={`text-lg text-gray-600 mb-2 group-hover:${colors.text}`}>
-            {file ? file.name : `Klik untuk pilih file Excel ${title.toLowerCase()}`}
-          </p>
-          <p className="text-sm text-gray-500">
-            Format yang didukung: .xlsx, .xls
-          </p>
-        </label>
-      </div>
-      
-      {file && (
-        <div className="mt-6">
-          <div className="flex items-center text-green-600 mb-2">
-            <CheckCircle className="h-5 w-5 mr-2" />
-            <span className="font-medium">File berhasil dipilih</span>
-          </div>
-          <div className="bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${uploadProgress}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

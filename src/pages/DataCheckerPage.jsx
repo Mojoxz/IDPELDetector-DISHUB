@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertCircle, CheckCircle, Loader2, Zap } from 'lucide-react';
+import { useDarkMode } from '../contexts/DarkModeContext';
 import FileUploadCard from '../components/FileUploadCard';
 import ResultsSection from '../components/ResultsSection';
 import { 
@@ -11,6 +12,8 @@ import {
 } from '../utils/dataProcessor';
 
 const DataChecker = () => {
+  const { darkMode } = useDarkMode();
+  
   const [files, setFiles] = useState({ old: null, new: null });
   const [uploadProgress, setUploadProgress] = useState({ old: 0, new: 0 });
   const [processing, setProcessing] = useState(false);
@@ -118,17 +121,25 @@ const DataChecker = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      darkMode 
+        ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900' 
+        : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl mb-6">
             <Zap className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          <h1 className={`text-4xl font-bold mb-4 transition-colors duration-300 ${
+            darkMode ? 'text-white' : 'text-gray-900'
+          }`}>
             Data Checker IDPEL Enhanced
           </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className={`text-xl max-w-3xl mx-auto transition-colors duration-300 ${
+            darkMode ? 'text-gray-300' : 'text-gray-600'
+          }`}>
             Analisis perbandingan data IDPEL dengan highlight otomatis dan pengurutan data baru
           </p>
         </div>
@@ -143,6 +154,7 @@ const DataChecker = () => {
               onFileSelect={handleFileSelect('old')}
               uploadProgress={uploadProgress.old}
               color="blue"
+              darkMode={darkMode}
             />
             <FileUploadCard
               id="file-new"
@@ -151,16 +163,25 @@ const DataChecker = () => {
               onFileSelect={handleFileSelect('new')}
               uploadProgress={uploadProgress.new}
               color="purple"
+              darkMode={darkMode}
             />
           </div>
         )}
 
         {/* Error Message */}
         {error && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl">
+          <div className={`mb-8 p-4 border rounded-xl transition-colors duration-300 ${
+            darkMode 
+              ? 'bg-red-900 border-red-700' 
+              : 'bg-red-50 border-red-200'
+          }`}>
             <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 text-red-600 mr-3 flex-shrink-0" />
-              <p className="text-red-800 font-medium">{error}</p>
+              <AlertCircle className={`h-5 w-5 mr-3 flex-shrink-0 ${
+                darkMode ? 'text-red-400' : 'text-red-600'
+              }`} />
+              <p className={`font-medium ${
+                darkMode ? 'text-red-200' : 'text-red-800'
+              }`}>{error}</p>
             </div>
           </div>
         )}
@@ -174,7 +195,9 @@ const DataChecker = () => {
               className={`px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center mx-auto ${
                 files.old && files.new && !processing
                   ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : darkMode 
+                    ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
               {processing ? (
@@ -195,14 +218,22 @@ const DataChecker = () => {
         {/* Processing Info */}
         {processing && (
           <div className="mb-12">
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <div className={`rounded-2xl p-6 shadow-lg border transition-colors duration-300 ${
+              darkMode 
+                ? 'bg-gray-800 border-gray-700' 
+                : 'bg-white border-gray-100'
+            }`}>
               <div className="flex items-center justify-center mb-4">
                 <Loader2 className="h-8 w-8 text-blue-600 animate-spin mr-3" />
-                <h3 className="text-xl font-semibold text-gray-900">
+                <h3 className={`text-xl font-semibold transition-colors duration-300 ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>
                   Sedang Memproses...
                 </h3>
               </div>
-              <div className="space-y-2 text-center text-gray-600">
+              <div className={`space-y-2 text-center transition-colors duration-300 ${
+                darkMode ? 'text-gray-300' : 'text-gray-600'
+              }`}>
                 <p>🔄 Membaca file Excel...</p>
                 <p>🔍 Menganalisis data IDPEL...</p>
                 <p>⚡ Menyiapkan highlight otomatis...</p>
@@ -215,13 +246,17 @@ const DataChecker = () => {
         {/* Results Section */}
         {result && (
           <div className="space-y-8">
-            <ResultsSection result={result} onDownload={handleDownload} />
+            <ResultsSection result={result} onDownload={handleDownload} darkMode={darkMode} />
             
             {/* Reset Button */}
             <div className="text-center">
               <button
                 onClick={resetAll}
-                className="px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-300 font-medium"
+                className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                  darkMode
+                    ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-gray-200 hover:from-gray-600 hover:to-gray-700'
+                    : 'bg-gradient-to-r from-gray-600 to-gray-700 text-white hover:from-gray-700 hover:to-gray-800'
+                }`}
               >
                 🔄 Analisis Data Baru
               </button>
@@ -231,35 +266,59 @@ const DataChecker = () => {
 
         {/* Features Info */}
         {!result && (
-          <div className="mt-16 bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+          <div className={`mt-16 rounded-2xl p-8 shadow-lg border transition-colors duration-300 ${
+            darkMode 
+              ? 'bg-gray-800 border-gray-700' 
+              : 'bg-white border-gray-100'
+          }`}>
+            <h3 className={`text-2xl font-bold mb-6 text-center transition-colors duration-300 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
               ✨ Fitur Enhanced
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center p-4">
-                <div className="w-12 h-12 bg-green-100 rounded-xl mx-auto mb-3 flex items-center justify-center">
+                <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center ${
+                  darkMode ? 'bg-green-900' : 'bg-green-100'
+                }`}>
                   <span className="text-2xl">🟢</span>
                 </div>
-                <h4 className="font-semibold text-gray-900 mb-2">Highlight Otomatis</h4>
-                <p className="text-sm text-gray-600">
+                <h4 className={`font-semibold mb-2 transition-colors duration-300 ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>Highlight Otomatis</h4>
+                <p className={`text-sm transition-colors duration-300 ${
+                  darkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   Data IDPEL baru otomatis ter-highlight dengan warna hijau terang
                 </p>
               </div>
               <div className="text-center p-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl mx-auto mb-3 flex items-center justify-center">
+                <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center ${
+                  darkMode ? 'bg-blue-900' : 'bg-blue-100'
+                }`}>
                   <span className="text-2xl">⬆️</span>
                 </div>
-                <h4 className="font-semibold text-gray-900 mb-2">Auto-Sort</h4>
-                <p className="text-sm text-gray-600">
+                <h4 className={`font-semibold mb-2 transition-colors duration-300 ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>Auto-Sort</h4>
+                <p className={`text-sm transition-colors duration-300 ${
+                  darkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   IDPEL baru otomatis diurutkan ke bagian atas untuk kemudahan review
                 </p>
               </div>
               <div className="text-center p-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl mx-auto mb-3 flex items-center justify-center">
+                <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center ${
+                  darkMode ? 'bg-purple-900' : 'bg-purple-100'
+                }`}>
                   <span className="text-2xl">📊</span>
                 </div>
-                <h4 className="font-semibold text-gray-900 mb-2">Multi-Format</h4>
-                <p className="text-sm text-gray-600">
+                <h4 className={`font-semibold mb-2 transition-colors duration-300 ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>Multi-Format</h4>
+                <p className={`text-sm transition-colors duration-300 ${
+                  darkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   Berbagai opsi download: dengan status, multi-sheet, dan data baru saja
                 </p>
               </div>

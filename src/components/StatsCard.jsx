@@ -1,27 +1,23 @@
 import React from 'react';
 
-const StatsCard = ({ 
-  title, 
-  value, 
-  icon: IconComponent, 
-  gradient, 
-  bgColor, 
-  progressColor, 
-  progressWidth 
-}) => {
+const StatsCard = ({ title, value, icon: Icon, gradient, bgColor, progressColor, progressWidth, darkMode }) => {
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
+    <div className={`rounded-2xl p-6 shadow-lg border transform hover:scale-105 transition-all duration-300 ${
+      darkMode 
+        ? 'bg-gray-800 border-gray-700 hover:border-gray-600' 
+        : 'bg-white border-gray-100 hover:shadow-xl'
+    }`}>
       <div className="flex items-center justify-between mb-4">
-        <div className={`bg-gradient-to-r ${gradient} p-3 rounded-xl`}>
-          <IconComponent className="h-6 w-6 text-white" />
+        <div className={`p-3 rounded-xl ${bgColor}`}>
+          <Icon className={`h-6 w-6 ${darkMode ? 'text-white' : 'text-gray-700'}`} />
         </div>
-        <div className="text-right">
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          <p className="text-sm text-gray-600">{title}</p>
+        <div className={`text-right ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <div className="text-sm font-medium">{title}</div>
+          <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{value}</div>
         </div>
       </div>
-      <div className={`${bgColor} rounded-full h-2`}>
-        <div className={`${progressColor} h-2 rounded-full ${progressWidth} animate-pulse`}></div>
+      <div className={`w-full rounded-full h-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
+        <div className={`h-2 rounded-full ${progressColor} ${progressWidth} transition-all duration-500`}></div>
       </div>
     </div>
   );

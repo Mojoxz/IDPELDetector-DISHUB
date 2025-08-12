@@ -1,7 +1,10 @@
 import React from 'react';
 import { Database, Sparkles, TrendingUp, Shield, Info } from 'lucide-react';
+import { useDarkMode } from '../contexts/DarkModeContext';
 
 const AboutPage = () => {
+  const { darkMode } = useDarkMode();
+  
   const features = [
     {
       icon: Database,
@@ -57,7 +60,11 @@ const AboutPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-100">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      darkMode 
+        ? 'bg-gradient-to-br from-gray-900 via-indigo-900 to-purple-900' 
+        : 'bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-100'
+    }`}>
       {/* Hero Section */}
       <div className="relative overflow-hidden py-20">
         <div className="max-w-4xl mx-auto text-center px-4">
@@ -66,14 +73,18 @@ const AboutPage = () => {
             Tentang DataChecker Pro
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+          <h1 className={`text-4xl md:text-5xl font-bold mb-6 leading-tight transition-colors duration-300 ${
+            darkMode ? 'text-white' : 'text-gray-900'
+          }`}>
             Solusi Modern untuk
             <span className="block bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               Analisis Data Excel
             </span>
           </h1>
           
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+          <p className={`text-xl mb-8 max-w-3xl mx-auto leading-relaxed transition-colors duration-300 ${
+            darkMode ? 'text-gray-300' : 'text-gray-600'
+          }`}>
             DataChecker Pro adalah aplikasi web canggih yang dirancang khusus untuk membantu Anda 
             mengidentifikasi data baru dalam file Excel dengan mudah dan efisien. Dikembangkan dengan 
             teknologi web modern untuk memberikan pengalaman terbaik.
@@ -88,10 +99,14 @@ const AboutPage = () => {
       {/* Features Section */}
       <div className="max-w-6xl mx-auto px-4 py-16">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className={`text-3xl md:text-4xl font-bold mb-4 transition-colors duration-300 ${
+            darkMode ? 'text-white' : 'text-gray-900'
+          }`}>
             Mengapa Memilih DataChecker Pro?
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className={`text-xl max-w-2xl mx-auto transition-colors duration-300 ${
+            darkMode ? 'text-gray-300' : 'text-gray-600'
+          }`}>
             Dilengkapi dengan fitur-fitur canggih untuk memenuhi semua kebutuhan analisis data Anda
           </p>
         </div>
@@ -101,14 +116,22 @@ const AboutPage = () => {
             const IconComponent = feature.icon;
             return (
               <div key={index} className="group">
-                <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border border-gray-100 h-full">
+                <div className={`rounded-2xl p-8 shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border h-full ${
+                  darkMode 
+                    ? 'bg-gray-800 border-gray-700 hover:border-gray-600' 
+                    : 'bg-white border-gray-100'
+                }`}>
                   <div className={`w-16 h-16 bg-gradient-to-r ${feature.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
                     <IconComponent className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                  <h3 className={`text-2xl font-bold mb-4 transition-colors duration-300 ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
                     {feature.title}
                   </h3>
-                  <p className="text-gray-600 leading-relaxed text-lg">
+                  <p className={`leading-relaxed text-lg transition-colors duration-300 ${
+                    darkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     {feature.description}
                   </p>
                 </div>
@@ -118,8 +141,14 @@ const AboutPage = () => {
         </div>
 
         {/* Technical Specs */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-16 border border-gray-100">
-          <h3 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+        <div className={`rounded-2xl shadow-xl p-8 mb-16 border transition-colors duration-300 ${
+          darkMode 
+            ? 'bg-gray-800 border-gray-700' 
+            : 'bg-white border-gray-100'
+        }`}>
+          <h3 className={`text-3xl font-bold mb-8 text-center transition-colors duration-300 ${
+            darkMode ? 'text-white' : 'text-gray-900'
+          }`}>
             Spesifikasi Teknis
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -130,8 +159,16 @@ const AboutPage = () => {
                   <div className={`bg-gradient-to-r ${spec.gradient} p-4 rounded-2xl inline-block mb-4`}>
                     <IconComponent className="h-8 w-8 text-white" />
                   </div>
-                  <h4 className="text-xl font-bold text-gray-900 mb-2">{spec.title}</h4>
-                  <p className="text-gray-600">{spec.description}</p>
+                  <h4 className={`text-xl font-bold mb-2 transition-colors duration-300 ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    {spec.title}
+                  </h4>
+                  <p className={`transition-colors duration-300 ${
+                    darkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
+                    {spec.description}
+                  </p>
                 </div>
               );
             })}
@@ -140,7 +177,9 @@ const AboutPage = () => {
 
         {/* How it works */}
         <div className="text-center mb-16">
-          <h3 className="text-3xl font-bold text-gray-900 mb-12">
+          <h3 className={`text-3xl font-bold mb-12 transition-colors duration-300 ${
+            darkMode ? 'text-white' : 'text-gray-900'
+          }`}>
             Cara Kerja
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -153,10 +192,20 @@ const AboutPage = () => {
                 } rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-4 shadow-lg`}>
                   {item.step}
                 </div>
-                <h4 className="text-xl font-bold text-gray-900 mb-2">{item.title}</h4>
-                <p className="text-gray-600">{item.desc}</p>
+                <h4 className={`text-xl font-bold mb-2 transition-colors duration-300 ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {item.title}
+                </h4>
+                <p className={`transition-colors duration-300 ${
+                  darkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  {item.desc}
+                </p>
                 {index < 2 && (
-                  <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-gray-300 to-gray-400 transform -translate-y-1/2"></div>
+                  <div className={`hidden md:block absolute top-8 left-full w-full h-0.5 transform -translate-y-1/2 ${
+                    darkMode ? 'bg-gradient-to-r from-gray-600 to-gray-500' : 'bg-gradient-to-r from-gray-300 to-gray-400'
+                  }`}></div>
                 )}
               </div>
             ))}
@@ -165,15 +214,23 @@ const AboutPage = () => {
       </div>
 
       {/* Footer */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white py-16">
+      <div className={`text-white py-16 transition-colors duration-300 ${
+        darkMode 
+          ? 'bg-gradient-to-r from-gray-800 to-gray-900' 
+          : 'bg-gradient-to-r from-gray-900 to-gray-800'
+      }`}>
         <div className="max-w-4xl mx-auto text-center px-4">
           <h3 className="text-2xl font-bold mb-4">
             Siap Mencoba DataChecker Pro?
           </h3>
-          <p className="text-gray-300 mb-8 text-lg">
+          <p className={`mb-8 text-lg transition-colors duration-300 ${
+            darkMode ? 'text-gray-300' : 'text-gray-300'
+          }`}>
             Mulai analisis data Anda sekarang juga dengan teknologi terdepan
           </p>
-          <div className="text-sm text-gray-400 space-y-2">
+          <div className={`text-sm space-y-2 transition-colors duration-300 ${
+            darkMode ? 'text-gray-400' : 'text-gray-400'
+          }`}>
             <p>© 2024 DataChecker Pro. Dibuat dengan ❤️ menggunakan React & Tailwind CSS</p>
             <p>Versi 1.0.0 | Privacy-focused | No data leaves your browser</p>
           </div>
