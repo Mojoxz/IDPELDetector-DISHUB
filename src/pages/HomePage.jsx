@@ -1,7 +1,10 @@
 import React from 'react';
 import { Upload, Database, TrendingUp, Shield, Sparkles, Info } from 'lucide-react';
+import { useDarkMode } from '../contexts/DarkModeContext';
 
 const HomePage = ({ setCurrentPage }) => {
+  const { darkMode } = useDarkMode();
+  
   const features = [
     {
       icon: Database,
@@ -30,7 +33,11 @@ const HomePage = ({ setCurrentPage }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      darkMode 
+        ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900' 
+        : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'
+    }`}>
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 py-20 lg:py-32">
@@ -40,14 +47,18 @@ const HomePage = ({ setCurrentPage }) => {
               Teknologi Terdepan untuk Analisis Data
             </div>
             
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+            <h1 className={`text-4xl md:text-6xl font-bold mb-6 leading-tight transition-colors duration-300 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
               Pendeteksi Data Baru
               <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 IDPEL Pro
               </span>
             </h1>
             
-            <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+            <p className={`text-xl mb-8 max-w-3xl mx-auto leading-relaxed transition-colors duration-300 ${
+              darkMode ? 'text-gray-300' : 'text-gray-600'
+            }`}>
               Analisis dan deteksi data baru dengan mudah menggunakan teknologi web modern. 
               Upload file Excel, dapatkan insight, dan download hasil dalam hitungan detik.
             </p>
@@ -62,7 +73,11 @@ const HomePage = ({ setCurrentPage }) => {
               </button>
               <button
                 onClick={() => setCurrentPage('about')}
-                className="px-8 py-4 bg-white text-gray-700 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border border-gray-200 flex items-center justify-center"
+                className={`px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border flex items-center justify-center ${
+                  darkMode 
+                    ? 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700' 
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                }`}
               >
                 <Info className="h-5 w-5 mr-2" />
                 Pelajari Lebih Lanjut
@@ -79,10 +94,14 @@ const HomePage = ({ setCurrentPage }) => {
       {/* Features Section */}
       <div className="max-w-7xl mx-auto px-4 py-20">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className={`text-3xl md:text-4xl font-bold mb-4 transition-colors duration-300 ${
+            darkMode ? 'text-white' : 'text-gray-900'
+          }`}>
             Fitur Unggulan
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className={`text-xl max-w-2xl mx-auto transition-colors duration-300 ${
+            darkMode ? 'text-gray-300' : 'text-gray-600'
+          }`}>
             Dilengkapi dengan teknologi terdepan untuk memberikan pengalaman terbaik
           </p>
         </div>
@@ -92,14 +111,22 @@ const HomePage = ({ setCurrentPage }) => {
             const IconComponent = feature.icon;
             return (
               <div key={index} className="group">
-                <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border border-gray-100">
+                <div className={`rounded-2xl p-8 shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border ${
+                  darkMode 
+                    ? 'bg-gray-800 border-gray-700 hover:border-gray-600' 
+                    : 'bg-white border-gray-100'
+                }`}>
                   <div className={`w-12 h-12 bg-gradient-to-r ${feature.color} rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
                     <IconComponent className="h-6 w-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                  <h3 className={`text-xl font-bold mb-3 transition-colors duration-300 ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
                     {feature.title}
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className={`leading-relaxed transition-colors duration-300 ${
+                    darkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     {feature.description}
                   </p>
                 </div>
