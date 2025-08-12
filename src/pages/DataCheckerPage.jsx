@@ -2,7 +2,14 @@ import React, { useState } from 'react';
 import { Upload, Download, FileText, CheckCircle, Loader2, BarChart3, Sparkles } from 'lucide-react';
 import FileUploadCard from '../components/FileUploadCard';
 import ResultsSection from '../components/ResultsSection';
-import { readExcelFile, processDataComparison, downloadExcel, saveToHistory } from '../utils/dataProcessor';
+import { 
+  readExcelFile, 
+  processDataComparison, 
+  downloadExcel, 
+  downloadExcelSeparateSheets,
+  downloadExcelWithHighlight,
+  saveToHistory 
+} from '../utils/dataProcessor';
 
 const DataCheckerPage = () => {
   const [fileOld, setFileOld] = useState(null);
@@ -138,6 +145,6 @@ const DataCheckerPage = () => {
     </div>
   );
 };
-  
+
 
 export default DataCheckerPage;
