@@ -16,22 +16,87 @@ const DataChecker = () => {
   
   const [files, setFiles] = useState({ old: null, new: null });
   const [uploadProgress, setUploadProgress] = useState({ old: 0, new: 0 });
+  const [fileErrors, setFileErrors] = useState({ old: null, new: null });
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+  const validateFile = (file) => {
+    // Validate file type
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+    ];
+    
+    if (!validTypes.includes(file.type)) {
+      return 'File harus berformat Excel (.xlsx atau .xls)';
+    }
+    
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      return 'Ukuran file tidak boleh lebih dari 10MB';
+    }
+    
+    return null;
+  };
+
   const handleFileSelect = (type) => (event) => {
     const file = event.target.files[0];
-    if (file) {
-      setFiles(prev => ({ ...prev, [type]: file }));
-      setUploadProgress(prev => ({ ...prev, [type]: 0 }));
-      setError(null); // Clear any previous errors
+    if (!file) return;
+
+    // Clear previous errors
+    setFileErrors(prev => ({ ...prev, [type]: null }));
+    setError(null);
+
+    // Validate file
+    const validationError = validateFile(file);
+    if (validationError) {
+      setFileErrors(prev => ({ ...prev, [type]: validationError }));
+      // Clear the input
+      event.target.value = '';
+      return;
     }
+
+    // Set file and reset progress
+    setFiles(prev => ({ ...prev, [type]: file }));
+    setUploadProgress(prev => ({ ...prev, [type]: 0 }));
+    
+    // Simulate upload progress for better UX
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress += Math.random() * 30;
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(progressInterval);
+      }
+      setUploadProgress(prev => ({ ...prev, [type]: Math.min(progress, 100) }));
+    }, 200);
+  };
+
+  const handleFileRemove = (type) => () => {
+    setFiles(prev => ({ ...prev, [type]: null }));
+    setUploadProgress(prev => ({ ...prev, [type]: 0 }));
+    setFileErrors(prev => ({ ...prev, [type]: null }));
+    setError(null);
+    
+    // Clear any file input values
+    const fileInputs = document.querySelectorAll(`input[type="file"]`);
+    fileInputs.forEach(input => {
+      if (input.id.includes(type)) {
+        input.value = '';
+      }
+    });
   };
 
   const handleProcess = async () => {
     if (!files.old || !files.new) {
       setError('Silakan pilih kedua file Excel terlebih dahulu');
+      return;
+    }
+
+    // Check for any file errors
+    if (fileErrors.old || fileErrors.new) {
+      setError('Silakan perbaiki error pada file terlebih dahulu');
       return;
     }
 
@@ -91,6 +156,14 @@ const DataChecker = () => {
     } catch (err) {
       console.error('❌ Error during processing:', err);
       setError(err.message || 'Terjadi kesalahan saat memproses file');
+      
+      // If it's a file reading error, set file error
+      if (err.message.includes('File lama')) {
+        setFileErrors(prev => ({ ...prev, old: 'File tidak dapat dibaca atau rusak' }));
+      }
+      if (err.message.includes('File baru')) {
+        setFileErrors(prev => ({ ...prev, new: 'File tidak dapat dibaca atau rusak' }));
+      }
     } finally {
       setProcessing(false);
     }
@@ -115,9 +188,16 @@ const DataChecker = () => {
   const resetAll = () => {
     setFiles({ old: null, new: null });
     setUploadProgress({ old: 0, new: 0 });
+    setFileErrors({ old: null, new: null });
     setResult(null);
     setError(null);
     setProcessing(false);
+    
+    // Clear all file inputs
+    const fileInputs = document.querySelectorAll(`input[type="file"]`);
+    fileInputs.forEach(input => {
+      input.value = '';
+    });
   };
 
   return (
@@ -152,18 +232,22 @@ const DataChecker = () => {
               title="Data Lama"
               file={files.old}
               onFileSelect={handleFileSelect('old')}
+              onFileRemove={handleFileRemove('old')}
               uploadProgress={uploadProgress.old}
               color="blue"
               darkMode={darkMode}
+              error={fileErrors.old}
             />
             <FileUploadCard
               id="file-new"
               title="Data Baru"
               file={files.new}
               onFileSelect={handleFileSelect('new')}
+              onFileRemove={handleFileRemove('new')}
               uploadProgress={uploadProgress.new}
               color="purple"
               darkMode={darkMode}
+              error={fileErrors.new}
             />
           </div>
         )}
@@ -186,14 +270,63 @@ const DataChecker = () => {
           </div>
         )}
 
+        {/* File Status Summary */}
+        {(files.old || files.new || fileErrors.old || fileErrors.new) && !result && (
+          <div className={`mb-8 p-4 rounded-xl border transition-colors duration-300 ${
+            darkMode 
+              ? 'bg-gray-800 border-gray-700' 
+              : 'bg-white border-gray-200'
+          }`}>
+            <h3 className={`text-lg font-semibold mb-3 transition-colors duration-300 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              📋 Status File
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center">
+                <span className={`mr-3 ${
+                  fileErrors.old ? 
+                    (darkMode ? 'text-red-400' : 'text-red-600') :
+                    files.old ? 
+                      (darkMode ? 'text-green-400' : 'text-green-600') :
+                      (darkMode ? 'text-gray-400' : 'text-gray-500')
+                }`}>
+                  {fileErrors.old ? '❌' : files.old ? '✅' : '⏳'}
+                </span>
+                <span className={`transition-colors duration-300 ${
+                  darkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
+                  Data Lama: {fileErrors.old ? 'Error' : files.old ? files.old.name : 'Belum dipilih'}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className={`mr-3 ${
+                  fileErrors.new ? 
+                    (darkMode ? 'text-red-400' : 'text-red-600') :
+                    files.new ? 
+                      (darkMode ? 'text-green-400' : 'text-green-600') :
+                      (darkMode ? 'text-gray-400' : 'text-gray-500')
+                }`}>
+                  {fileErrors.new ? '❌' : files.new ? '✅' : '⏳'}
+                </span>
+                <span className={`transition-colors duration-300 ${
+                  darkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
+                  Data Baru: {fileErrors.new ? 'Error' : files.new ? files.new.name : 'Belum dipilih'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Process Button */}
         {!result && (
           <div className="text-center mb-12">
             <button
               onClick={handleProcess}
-              disabled={!files.old || !files.new || processing}
+              disabled={!files.old || !files.new || processing || fileErrors.old || fileErrors.new}
               className={`px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center mx-auto ${
-                files.old && files.new && !processing
+                files.old && files.new && !processing && !fileErrors.old && !fileErrors.new
                   ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105'
                   : darkMode 
                     ? 'bg-gray-700 text-gray-400 cursor-not-allowed'

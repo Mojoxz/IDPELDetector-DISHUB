@@ -2,6 +2,7 @@ import React from 'react';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import DarkModeToggle from './DarkModeToggle';
 
+
 const Navbar = ({ currentPage, setCurrentPage, isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const { darkMode } = useDarkMode();
   
@@ -25,8 +26,12 @@ const Navbar = ({ currentPage, setCurrentPage, isMobileMenuOpen, setIsMobileMenu
             onClick={() => setCurrentPage('home')}
             className="flex items-center space-x-3 cursor-pointer group"
           >
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-              <span className="text-white font-bold text-lg">ID</span>
+            <div className='w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 bg-white p-1'>
+              <img 
+                src="src/assets/logo.svg" 
+                alt="Logo" 
+                className="w-full h-full object-contain" 
+              />
             </div>
             <span className={`font-bold text-xl transition-colors duration-300 ${
               darkMode ? 'text-white' : 'text-gray-900'
