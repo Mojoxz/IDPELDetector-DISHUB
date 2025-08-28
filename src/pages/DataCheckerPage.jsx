@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { AlertCircle, CheckCircle, Loader2, Zap } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, Zap, FileSpreadsheet, Settings } from 'lucide-react';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import FileUploadCard from '../components/FileUploadCard';
 import ResultsSection from '../components/ResultsSection';
 import { 
-  readExcelFile, 
+  readExcelFile,
+  readExcelFileAllSheets,
   processDataComparison, 
+  processDataComparisonMultiSheet,
   downloadExcel, 
   downloadExcelWithGreenHighlight,
+  downloadExcelMultiSheet,
   saveToHistory 
 } from '../utils/dataProcessor';
 
@@ -20,6 +23,7 @@ const DataChecker = () => {
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [processingMode, setProcessingMode] = useState('multisheet'); // 'single' or 'multisheet'
 
   const validateFile = (file) => {
     // Validate file type
@@ -88,13 +92,12 @@ const DataChecker = () => {
     });
   };
 
-  const handleProcess = async () => {
+  const handleProcessMultiSheet = async () => {
     if (!files.old || !files.new) {
       setError('Silakan pilih kedua file Excel terlebih dahulu');
       return;
     }
 
-    // Check for any file errors
     if (fileErrors.old || fileErrors.new) {
       setError('Silakan perbaiki error pada file terlebih dahulu');
       return;
@@ -106,11 +109,84 @@ const DataChecker = () => {
     const startTime = Date.now();
 
     try {
-      // Read both Excel files
-      console.log('📁 Membaca file lama...');
+      console.log('📁 Membaca file lama (multi-sheet)...');
+      const dataOld = await readExcelFileAllSheets(files.old, 'old', setUploadProgress);
+      
+      console.log('📁 Membaca file baru (multi-sheet)...');
+      const dataNew = await readExcelFileAllSheets(files.new, 'new', setUploadProgress);
+
+      // Validate data structure
+      const targetSheets = ["DMP", "DKP", "NGL", "RKT", "GDN"];
+      const hasValidSheets = targetSheets.some(sheet => 
+        (dataOld[sheet] && dataOld[sheet].length > 0) || 
+        (dataNew[sheet] && dataNew[sheet].length > 0)
+      );
+
+      if (!hasValidSheets) {
+        throw new Error(`File tidak memiliki sheet yang valid. Sheet yang diperlukan: ${targetSheets.join(', ')}`);
+      }
+
+      console.log('🔍 Memproses perbandingan data multi-sheet...');
+      
+      // Process data comparison for multiple sheets
+      const comparisonResult = processDataComparisonMultiSheet(dataOld, dataNew);
+      
+      const endTime = Date.now();
+      const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+
+      const finalResult = {
+        ...comparisonResult,
+        processingTime: processingTime,
+        mode: 'multisheet'
+      };
+
+      setResult(finalResult);
+
+      // Save to processing history
+      saveToHistory(files.old.name, files.new.name, finalResult);
+
+      console.log('✅ Proses multi-sheet selesai!', {
+        totalSheets: finalResult.processedSheets.length,
+        totalNewData: finalResult.totalNewAll,
+        processingTime: processingTime + 's'
+      });
+
+    } catch (err) {
+      console.error('❌ Error during multi-sheet processing:', err);
+      setError(err.message || 'Terjadi kesalahan saat memproses file multi-sheet');
+      
+      if (err.message.includes('File lama')) {
+        setFileErrors(prev => ({ ...prev, old: 'File tidak dapat dibaca atau tidak memiliki sheet yang valid' }));
+      }
+      if (err.message.includes('File baru')) {
+        setFileErrors(prev => ({ ...prev, new: 'File tidak dapat dibaca atau tidak memiliki sheet yang valid' }));
+      }
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleProcessSingle = async () => {
+    if (!files.old || !files.new) {
+      setError('Silakan pilih kedua file Excel terlebih dahulu');
+      return;
+    }
+
+    if (fileErrors.old || fileErrors.new) {
+      setError('Silakan perbaiki error pada file terlebih dahulu');
+      return;
+    }
+
+    setProcessing(true);
+    setError(null);
+    
+    const startTime = Date.now();
+
+    try {
+      console.log('📁 Membaca file lama (single sheet)...');
       const dataOld = await readExcelFile(files.old, 'old', setUploadProgress);
       
-      console.log('📁 Membaca file baru...');
+      console.log('📁 Membaca file baru (single sheet)...');
       const dataNew = await readExcelFile(files.new, 'new', setUploadProgress);
 
       // Validate data structure
@@ -129,9 +205,8 @@ const DataChecker = () => {
         throw new Error('Kolom IDPEL tidak ditemukan dalam salah satu file. Pastikan file Excel memiliki kolom IDPEL.');
       }
 
-      console.log('🔍 Memproses perbandingan data...');
+      console.log('🔍 Memproses perbandingan data single sheet...');
       
-      // Process data comparison with automatic sorting
       const comparisonResult = processDataComparison(dataOld, dataNew);
       
       const endTime = Date.now();
@@ -139,25 +214,24 @@ const DataChecker = () => {
 
       const finalResult = {
         ...comparisonResult,
-        processingTime: processingTime
+        processingTime: processingTime,
+        mode: 'single'
       };
 
       setResult(finalResult);
 
-      // Save to processing history
       saveToHistory(files.old.name, files.new.name, finalResult);
 
-      console.log('✅ Proses selesai!', {
+      console.log('✅ Proses single sheet selesai!', {
         totalData: finalResult.totalAll,
         newData: finalResult.totalNew,
         processingTime: processingTime + 's'
       });
 
     } catch (err) {
-      console.error('❌ Error during processing:', err);
+      console.error('❌ Error during single sheet processing:', err);
       setError(err.message || 'Terjadi kesalahan saat memproses file');
       
-      // If it's a file reading error, set file error
       if (err.message.includes('File lama')) {
         setFileErrors(prev => ({ ...prev, old: 'File tidak dapat dibaca atau rusak' }));
       }
@@ -169,18 +243,29 @@ const DataChecker = () => {
     }
   };
 
+  const handleProcess = async () => {
+    if (processingMode === 'multisheet') {
+      await handleProcessMultiSheet();
+    } else {
+      await handleProcessSingle();
+    }
+  };
+
   const handleDownload = async (data, filename, useHighlight = true) => {
     try {
-      if (useHighlight) {
-        // Use enhanced highlighting function
-        await downloadExcelWithGreenHighlight(data, filename);
+      if (result && result.mode === 'multisheet') {
+        // For multi-sheet results, use the specialized multi-sheet download
+        await downloadExcelMultiSheet(result, filename);
       } else {
-        // Use basic download function
-        downloadExcel(data, filename, false);
+        // For single sheet results
+        if (useHighlight) {
+          await downloadExcelWithGreenHighlight(data, filename);
+        } else {
+          downloadExcel(data, filename, false);
+        }
       }
     } catch (error) {
       console.error('Error downloading file:', error);
-      // Fallback to basic download
       downloadExcel(data, filename, false);
     }
   };
@@ -220,16 +305,75 @@ const DataChecker = () => {
           <p className={`text-xl max-w-3xl mx-auto transition-colors duration-300 ${
             darkMode ? 'text-gray-300' : 'text-gray-600'
           }`}>
-            Analisis perbandingan data IDPEL dengan highlight otomatis dan pengurutan data baru
+            {processingMode === 'multisheet' 
+              ? 'Analisis multi-sheet IDPEL dengan format seperti script Python (DMP, DKP, NGL, RKT, GDN)'
+              : 'Analisis perbandingan data IDPEL dengan highlight otomatis dan pengurutan data baru'
+            }
           </p>
         </div>
+
+        {/* Processing Mode Toggle */}
+        {!result && (
+          <div className={`mb-8 p-6 rounded-2xl border transition-colors duration-300 ${
+            darkMode 
+              ? 'bg-gray-800 border-gray-700' 
+              : 'bg-white border-gray-200'
+          }`}>
+            <div className="flex items-center justify-center mb-4">
+              <Settings className={`h-6 w-6 mr-3 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`} />
+              <h3 className={`text-lg font-semibold transition-colors duration-300 ${
+                darkMode ? 'text-white' : 'text-gray-900'
+              }`}>
+                Mode Pemrosesan
+              </h3>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => setProcessingMode('multisheet')}
+                className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center ${
+                  processingMode === 'multisheet'
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                    : darkMode
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <FileSpreadsheet className="h-5 w-5 mr-2" />
+                Multi-Sheet (Python Style)
+              </button>
+              <button
+                onClick={() => setProcessingMode('single')}
+                className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center ${
+                  processingMode === 'single'
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                    : darkMode
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Single Sheet (Original)
+              </button>
+            </div>
+            <div className="mt-4 text-center">
+              <p className={`text-sm transition-colors duration-300 ${
+                darkMode ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                {processingMode === 'multisheet' 
+                  ? '🔄 Mode ini akan memproses sheet: DMP, DKP, NGL, RKT, GDN seperti script Python'
+                  : '📊 Mode ini akan memproses sheet pertama dengan kolom IDPEL'
+                }
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* File Upload Section */}
         {!result && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
             <FileUploadCard
               id="file-old"
-              title="Data Lama"
+              title={processingMode === 'multisheet' ? "File Agustus (Multi-Sheet)" : "Data Lama"}
               file={files.old}
               onFileSelect={handleFileSelect('old')}
               onFileRemove={handleFileRemove('old')}
@@ -240,7 +384,7 @@ const DataChecker = () => {
             />
             <FileUploadCard
               id="file-new"
-              title="Data Baru"
+              title={processingMode === 'multisheet' ? "File September (Multi-Sheet)" : "Data Baru"}
               file={files.new}
               onFileSelect={handleFileSelect('new')}
               onFileRemove={handleFileRemove('new')}
@@ -280,7 +424,7 @@ const DataChecker = () => {
             <h3 className={`text-lg font-semibold mb-3 transition-colors duration-300 ${
               darkMode ? 'text-white' : 'text-gray-900'
             }`}>
-              📋 Status File
+              📋 Status File ({processingMode === 'multisheet' ? 'Multi-Sheet' : 'Single Sheet'})
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center">
@@ -296,7 +440,7 @@ const DataChecker = () => {
                 <span className={`transition-colors duration-300 ${
                   darkMode ? 'text-gray-300' : 'text-gray-700'
                 }`}>
-                  Data Lama: {fileErrors.old ? 'Error' : files.old ? files.old.name : 'Belum dipilih'}
+                  {processingMode === 'multisheet' ? 'File Agustus' : 'Data Lama'}: {fileErrors.old ? 'Error' : files.old ? files.old.name : 'Belum dipilih'}
                 </span>
               </div>
               <div className="flex items-center">
@@ -312,7 +456,7 @@ const DataChecker = () => {
                 <span className={`transition-colors duration-300 ${
                   darkMode ? 'text-gray-300' : 'text-gray-700'
                 }`}>
-                  Data Baru: {fileErrors.new ? 'Error' : files.new ? files.new.name : 'Belum dipilih'}
+                  {processingMode === 'multisheet' ? 'File September' : 'Data Baru'}: {fileErrors.new ? 'Error' : files.new ? files.new.name : 'Belum dipilih'}
                 </span>
               </div>
             </div>
@@ -336,12 +480,12 @@ const DataChecker = () => {
               {processing ? (
                 <>
                   <Loader2 className="h-6 w-6 mr-3 animate-spin" />
-                  Memproses Data...
+                  Memproses Data {processingMode === 'multisheet' ? 'Multi-Sheet' : 'Single Sheet'}...
                 </>
               ) : (
                 <>
                   <CheckCircle className="h-6 w-6 mr-3" />
-                  Analisis Data dengan Highlight
+                  Analisis Data {processingMode === 'multisheet' ? 'Multi-Sheet' : 'dengan Highlight'}
                 </>
               )}
             </button>
@@ -361,16 +505,26 @@ const DataChecker = () => {
                 <h3 className={`text-xl font-semibold transition-colors duration-300 ${
                   darkMode ? 'text-white' : 'text-gray-900'
                 }`}>
-                  Sedang Memproses...
+                  Sedang Memproses {processingMode === 'multisheet' ? 'Multi-Sheet' : 'Single Sheet'}...
                 </h3>
               </div>
               <div className={`space-y-2 text-center transition-colors duration-300 ${
                 darkMode ? 'text-gray-300' : 'text-gray-600'
               }`}>
                 <p>🔄 Membaca file Excel...</p>
-                <p>🔍 Menganalisis data IDPEL...</p>
-                <p>⚡ Menyiapkan highlight otomatis...</p>
-                <p>📊 Mengurutkan data baru ke atas...</p>
+                {processingMode === 'multisheet' ? (
+                  <>
+                    <p>📊 Memproses sheet: DMP, DKP, NGL, RKT, GDN...</p>
+                    <p>🔍 Mencari IDPEL baru per sheet...</p>
+                    <p>📋 Membuat laporan multi-sheet...</p>
+                  </>
+                ) : (
+                  <>
+                    <p>🔍 Menganalisis data IDPEL...</p>
+                    <p>⚡ Menyiapkan highlight otomatis...</p>
+                    <p>📊 Mengurutkan data baru ke atas...</p>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -379,7 +533,11 @@ const DataChecker = () => {
         {/* Results Section */}
         {result && (
           <div className="space-y-8">
-            <ResultsSection result={result} onDownload={handleDownload} darkMode={darkMode} />
+            {result.mode === 'multisheet' ? (
+              <MultiSheetResultsSection result={result} onDownload={handleDownload} darkMode={darkMode} />
+            ) : (
+              <ResultsSection result={result} onDownload={handleDownload} darkMode={darkMode} />
+            )}
             
             {/* Reset Button */}
             <div className="text-center">
@@ -414,6 +572,21 @@ const DataChecker = () => {
                 <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center ${
                   darkMode ? 'bg-green-900' : 'bg-green-100'
                 }`}>
+                  <span className="text-2xl">🔄</span>
+                </div>
+                <h4 className={`font-semibold mb-2 transition-colors duration-300 ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>Multi-Sheet Processing</h4>
+                <p className={`text-sm transition-colors duration-300 ${
+                  darkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  Proses multiple sheet (DMP, DKP, NGL, RKT, GDN) seperti script Python
+                </p>
+              </div>
+              <div className="text-center p-4">
+                <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center ${
+                  darkMode ? 'bg-blue-900' : 'bg-blue-100'
+                }`}>
                   <span className="text-2xl">🟢</span>
                 </div>
                 <h4 className={`font-semibold mb-2 transition-colors duration-300 ${
@@ -427,35 +600,211 @@ const DataChecker = () => {
               </div>
               <div className="text-center p-4">
                 <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center ${
-                  darkMode ? 'bg-blue-900' : 'bg-blue-100'
-                }`}>
-                  <span className="text-2xl">⬆️</span>
-                </div>
-                <h4 className={`font-semibold mb-2 transition-colors duration-300 ${
-                  darkMode ? 'text-white' : 'text-gray-900'
-                }`}>Auto-Sort</h4>
-                <p className={`text-sm transition-colors duration-300 ${
-                  darkMode ? 'text-gray-300' : 'text-gray-600'
-                }`}>
-                  IDPEL baru otomatis diurutkan ke bagian atas untuk kemudahan review
-                </p>
-              </div>
-              <div className="text-center p-4">
-                <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center ${
                   darkMode ? 'bg-purple-900' : 'bg-purple-100'
                 }`}>
                   <span className="text-2xl">📊</span>
                 </div>
                 <h4 className={`font-semibold mb-2 transition-colors duration-300 ${
                   darkMode ? 'text-white' : 'text-gray-900'
-                }`}>Multi-Format</h4>
+                }`}>Laporan Lengkap</h4>
                 <p className={`text-sm transition-colors duration-300 ${
                   darkMode ? 'text-gray-300' : 'text-gray-600'
                 }`}>
-                  Berbagai opsi download: dengan status, multi-sheet, dan data baru saja
+                  Summary per sheet, data baru saja, dan laporan gabungan
                 </p>
               </div>
             </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Multi-Sheet Results Component
+const MultiSheetResultsSection = ({ result, onDownload, darkMode }) => {
+  const [activeTab, setActiveTab] = useState('summary');
+
+  const getFileName = (type) => {
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    switch(type) {
+      case 'multisheet': return `idpel_terbaru_multisheet_${timestamp}.xlsx`;
+      default: return `idpel_result_${timestamp}.xlsx`;
+    }
+  };
+
+  return (
+    <div className={`rounded-2xl shadow-2xl border transition-colors duration-300 ${
+      darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
+    }`}>
+      {/* Header */}
+      <div className="p-8 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className={`text-2xl font-bold transition-colors duration-300 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              📊 Hasil Analisis Multi-Sheet
+            </h2>
+            <p className={`text-sm mt-1 transition-colors duration-300 ${
+              darkMode ? 'text-gray-400' : 'text-gray-600'
+            }`}>
+              Proses selesai dalam {result.processingTime}s
+            </p>
+          </div>
+          <div className="text-right">
+            <div className={`text-3xl font-bold transition-colors duration-300 ${
+              darkMode ? 'text-green-400' : 'text-green-600'
+            }`}>
+              +{result.totalNewAll.toLocaleString()}
+            </div>
+            <div className={`text-sm transition-colors duration-300 ${
+              darkMode ? 'text-gray-400' : 'text-gray-600'
+            }`}>
+              IDPEL Baru Total
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="px-8 pt-6">
+        <div className="flex space-x-1 mb-6">
+          <button
+            onClick={() => setActiveTab('summary')}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+              activeTab === 'summary'
+                ? 'bg-blue-600 text-white shadow-lg'
+                : darkMode
+                  ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            📈 Summary
+          </button>
+          <button
+            onClick={() => setActiveTab('details')}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+              activeTab === 'details'
+                ? 'bg-blue-600 text-white shadow-lg'
+                : darkMode
+                  ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            📊 Detail Per Sheet
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="px-8 pb-8">
+        {activeTab === 'summary' && (
+          <div className="space-y-6">
+            {/* Overall Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className={`p-4 rounded-xl border transition-colors duration-300 ${
+                darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
+              }`}>
+                <div className={`text-2xl font-bold transition-colors duration-300 ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {result.processedSheets.length}
+                </div>
+                <div className={`text-sm transition-colors duration-300 ${
+                  darkMode ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  Sheet Diproses
+                </div>
+              </div>
+              <div className={`p-4 rounded-xl border transition-colors duration-300 ${
+                darkMode ? 'bg-green-900 border-green-700' : 'bg-green-50 border-green-200'
+              }`}>
+                <div className={`text-2xl font-bold transition-colors duration-300 ${
+                  darkMode ? 'text-green-400' : 'text-green-600'
+                }`}>
+                  {result.totalNewAll.toLocaleString()}
+                </div>
+                <div className={`text-sm transition-colors duration-300 ${
+                  darkMode ? 'text-green-300' : 'text-green-700'
+                }`}>
+                  Total IDPEL Baru
+                </div>
+              </div>
+              <div className={`p-4 rounded-xl border transition-colors duration-300 ${
+                darkMode ? 'bg-blue-900 border-blue-700' : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className={`text-2xl font-bold transition-colors duration-300 ${
+                  darkMode ? 'text-blue-400' : 'text-blue-600'
+                }`}>
+                  {result.totalProcessedAll.toLocaleString()}
+                </div>
+                <div className={`text-sm transition-colors duration-300 ${
+                  darkMode ? 'text-blue-300' : 'text-blue-700'
+                }`}>
+                  Total Data Diproses
+                </div>
+              </div>
+            </div>
+
+            {/* Download Button */}
+            <div className="text-center">
+              <button
+                onClick={() => onDownload(result, getFileName('multisheet'), true)}
+                className="px-8 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-bold text-lg hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                📥 Download Laporan Multi-Sheet Lengkap
+              </button>
+              <p className={`text-sm mt-2 transition-colors duration-300 ${
+                darkMode ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                Berisi summary, data baru per sheet, dan laporan gabungan (seperti Python script)
+              </p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'details' && (
+          <div className="space-y-4">
+            {result.processedSheets.map(sheetName => {
+              const sheetData = result.sheetResults[sheetName];
+              const percentage = sheetData.totalAll > 0 ? ((sheetData.totalNew / sheetData.totalAll) * 100).toFixed(1) : '0';
+              
+              return (
+                <div key={sheetName} className={`p-4 rounded-xl border transition-colors duration-300 ${
+                  darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className={`font-semibold transition-colors duration-300 ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        📋 Sheet {sheetName}
+                      </h4>
+                      <p className={`text-sm transition-colors duration-300 ${
+                        darkMode ? 'text-gray-400' : 'text-gray-600'
+                      }`}>
+                        Total: {sheetData.totalAll.toLocaleString()} data
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-lg font-bold ${
+                        sheetData.totalNew > 0 
+                          ? (darkMode ? 'text-green-400' : 'text-green-600')
+                          : (darkMode ? 'text-gray-400' : 'text-gray-600')
+                      }`}>
+                        {sheetData.totalNew > 0 ? `+${sheetData.totalNew.toLocaleString()}` : 'Tidak ada'}
+                      </div>
+                      <div className={`text-sm transition-colors duration-300 ${
+                        darkMode ? 'text-gray-400' : 'text-gray-600'
+                      }`}>
+                        {sheetData.totalNew > 0 ? `${percentage}% baru` : 'data baru'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
