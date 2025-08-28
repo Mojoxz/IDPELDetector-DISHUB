@@ -28,7 +28,7 @@ const Navbar = ({ currentPage, setCurrentPage, isMobileMenuOpen, setIsMobileMenu
           >
             <div className='w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 bg-white p-1'>
               <img 
-                src="logo.svg" 
+                src="DISHUB SURABAYA.svg" 
                 alt="Logo" 
                 className="w-full h-full object-contain" 
               />
