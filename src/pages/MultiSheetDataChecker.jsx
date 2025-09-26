@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
-import { AlertCircle, CheckCircle, Loader2, Zap } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, Zap, FileSpreadsheet } from 'lucide-react';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import FileUploadCard from '../components/FileUploadCard';
-import ResultsSection from '../components/ResultsSection';
+import MultiSheetResultsSection from '../components/MultiSheetResultsSection';
 import { 
-  readExcelFile,
-  processDataComparison, 
-  downloadExcel, 
-  downloadExcelWithGreenHighlight,
+  readExcelFileAllSheets,
+  processDataComparisonMultiSheet,
+  downloadExcelMultiSheet,
   saveToHistory 
 } from '../utils/dataProcessor';
 
-const DataChecker = () => {
+const MultiSheetDataChecker = () => {
   const { darkMode } = useDarkMode();
   
   const [files, setFiles] = useState({ old: null, new: null });
@@ -105,31 +104,27 @@ const DataChecker = () => {
     const startTime = Date.now();
 
     try {
-      console.log('📁 Membaca file lama (single sheet)...');
-      const dataOld = await readExcelFile(files.old, 'old', setUploadProgress);
+      console.log('📁 Membaca file lama (multi-sheet)...');
+      const dataOld = await readExcelFileAllSheets(files.old, 'old', setUploadProgress);
       
-      console.log('📁 Membaca file baru (single sheet)...');
-      const dataNew = await readExcelFile(files.new, 'new', setUploadProgress);
+      console.log('📁 Membaca file baru (multi-sheet)...');
+      const dataNew = await readExcelFileAllSheets(files.new, 'new', setUploadProgress);
 
       // Validate data structure
-      if (!dataOld || dataOld.length === 0) {
-        throw new Error('File lama kosong atau tidak valid');
-      }
-      if (!dataNew || dataNew.length === 0) {
-        throw new Error('File baru kosong atau tidak valid');
-      }
+      const targetSheets = ["DMP", "DKP", "NGL", "RKT", "GDN"];
+      const hasValidSheets = targetSheets.some(sheet => 
+        (dataOld[sheet] && dataOld[sheet].length > 0) || 
+        (dataNew[sheet] && dataNew[sheet].length > 0)
+      );
 
-      // Check if IDPEL column exists
-      const hasIdpelOld = dataOld.some(row => row.IDPEL !== undefined);
-      const hasIdpelNew = dataNew.some(row => row.IDPEL !== undefined);
-
-      if (!hasIdpelOld || !hasIdpelNew) {
-        throw new Error('Kolom IDPEL tidak ditemukan dalam salah satu file. Pastikan file Excel memiliki kolom IDPEL.');
+      if (!hasValidSheets) {
+        throw new Error(`File tidak memiliki sheet yang valid. Sheet yang diperlukan: ${targetSheets.join(', ')}`);
       }
 
-      console.log('🔍 Memproses perbandingan data single sheet...');
+      console.log('🔍 Memproses perbandingan data multi-sheet...');
       
-      const comparisonResult = processDataComparison(dataOld, dataNew);
+      // Process data comparison for multiple sheets
+      const comparisonResult = processDataComparisonMultiSheet(dataOld, dataNew);
       
       const endTime = Date.now();
       const processingTime = ((endTime - startTime) / 1000).toFixed(2);
@@ -137,28 +132,29 @@ const DataChecker = () => {
       const finalResult = {
         ...comparisonResult,
         processingTime: processingTime,
-        mode: 'single'
+        mode: 'multisheet'
       };
 
       setResult(finalResult);
 
+      // Save to processing history
       saveToHistory(files.old.name, files.new.name, finalResult);
 
-      console.log('✅ Proses single sheet selesai!', {
-        totalData: finalResult.totalAll,
-        newData: finalResult.totalNew,
+      console.log('✅ Proses multi-sheet selesai!', {
+        totalSheets: finalResult.processedSheets.length,
+        totalNewData: finalResult.totalNewAll,
         processingTime: processingTime + 's'
       });
 
     } catch (err) {
-      console.error('❌ Error during single sheet processing:', err);
-      setError(err.message || 'Terjadi kesalahan saat memproses file');
+      console.error('❌ Error during multi-sheet processing:', err);
+      setError(err.message || 'Terjadi kesalahan saat memproses file multi-sheet');
       
       if (err.message.includes('File lama')) {
-        setFileErrors(prev => ({ ...prev, old: 'File tidak dapat dibaca atau rusak' }));
+        setFileErrors(prev => ({ ...prev, old: 'File tidak dapat dibaca atau tidak memiliki sheet yang valid' }));
       }
       if (err.message.includes('File baru')) {
-        setFileErrors(prev => ({ ...prev, new: 'File tidak dapat dibaca atau rusak' }));
+        setFileErrors(prev => ({ ...prev, new: 'File tidak dapat dibaca atau tidak memiliki sheet yang valid' }));
       }
     } finally {
       setProcessing(false);
@@ -167,14 +163,11 @@ const DataChecker = () => {
 
   const handleDownload = async (data, filename, useHighlight = true) => {
     try {
-      if (useHighlight) {
-        await downloadExcelWithGreenHighlight(data, filename);
-      } else {
-        downloadExcel(data, filename, false);
-      }
+      // For multi-sheet results, use the specialized multi-sheet download
+      await downloadExcelMultiSheet(result, filename);
     } catch (error) {
       console.error('Error downloading file:', error);
-      downloadExcel(data, filename, false);
+      // Could add fallback download here
     }
   };
 
@@ -203,17 +196,17 @@ const DataChecker = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl mb-6">
-            <Zap className="h-8 w-8 text-white" />
+            <FileSpreadsheet className="h-8 w-8 text-white" />
           </div>
           <h1 className={`text-4xl font-bold mb-4 transition-colors duration-300 ${
             darkMode ? 'text-white' : 'text-gray-900'
           }`}>
-            Data Checker IDPEL
+            Multi-Sheet Data Checker
           </h1>
           <p className={`text-xl max-w-3xl mx-auto transition-colors duration-300 ${
             darkMode ? 'text-gray-300' : 'text-gray-600'
           }`}>
-            Analisis perbandingan data IDPEL dengan highlight otomatis dan pengurutan data baru
+            Analisis multi-sheet IDPEL dengan format seperti script Python (DMP, DKP, NGL, RKT, GDN)
           </p>
         </div>
 
@@ -222,7 +215,7 @@ const DataChecker = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
             <FileUploadCard
               id="file-old"
-              title="Data Lama"
+              title="File Agustus (Multi-Sheet)"
               file={files.old}
               onFileSelect={handleFileSelect('old')}
               onFileRemove={handleFileRemove('old')}
@@ -233,7 +226,7 @@ const DataChecker = () => {
             />
             <FileUploadCard
               id="file-new"
-              title="Data Baru"
+              title="File September (Multi-Sheet)"
               file={files.new}
               onFileSelect={handleFileSelect('new')}
               onFileRemove={handleFileRemove('new')}
@@ -273,7 +266,7 @@ const DataChecker = () => {
             <h3 className={`text-lg font-semibold mb-3 transition-colors duration-300 ${
               darkMode ? 'text-white' : 'text-gray-900'
             }`}>
-              📋 Status File (Single Sheet)
+              📋 Status File (Multi-Sheet)
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center">
@@ -289,7 +282,7 @@ const DataChecker = () => {
                 <span className={`transition-colors duration-300 ${
                   darkMode ? 'text-gray-300' : 'text-gray-700'
                 }`}>
-                  Data Lama: {fileErrors.old ? 'Error' : files.old ? files.old.name : 'Belum dipilih'}
+                  File Agustus: {fileErrors.old ? 'Error' : files.old ? files.old.name : 'Belum dipilih'}
                 </span>
               </div>
               <div className="flex items-center">
@@ -305,7 +298,7 @@ const DataChecker = () => {
                 <span className={`transition-colors duration-300 ${
                   darkMode ? 'text-gray-300' : 'text-gray-700'
                 }`}>
-                  Data Baru: {fileErrors.new ? 'Error' : files.new ? files.new.name : 'Belum dipilih'}
+                  File September: {fileErrors.new ? 'Error' : files.new ? files.new.name : 'Belum dipilih'}
                 </span>
               </div>
             </div>
@@ -329,12 +322,12 @@ const DataChecker = () => {
               {processing ? (
                 <>
                   <Loader2 className="h-6 w-6 mr-3 animate-spin" />
-                  Memproses Data Single Sheet...
+                  Memproses Data Multi-Sheet...
                 </>
               ) : (
                 <>
                   <CheckCircle className="h-6 w-6 mr-3" />
-                  Analisis Data dengan Highlight
+                  Analisis Data Multi-Sheet
                 </>
               )}
             </button>
@@ -354,16 +347,16 @@ const DataChecker = () => {
                 <h3 className={`text-xl font-semibold transition-colors duration-300 ${
                   darkMode ? 'text-white' : 'text-gray-900'
                 }`}>
-                  Sedang Memproses Single Sheet...
+                  Sedang Memproses Multi-Sheet...
                 </h3>
               </div>
               <div className={`space-y-2 text-center transition-colors duration-300 ${
                 darkMode ? 'text-gray-300' : 'text-gray-600'
               }`}>
                 <p>🔄 Membaca file Excel...</p>
-                <p>🔍 Menganalisis data IDPEL...</p>
-                <p>⚡ Menyiapkan highlight otomatis...</p>
-                <p>📊 Mengurutkan data baru ke atas...</p>
+                <p>📊 Memproses sheet: DMP, DKP, NGL, RKT, GDN...</p>
+                <p>🔍 Mencari IDPEL baru per sheet...</p>
+                <p>📋 Membuat laporan multi-sheet...</p>
               </div>
             </div>
           </div>
@@ -372,7 +365,11 @@ const DataChecker = () => {
         {/* Results Section */}
         {result && (
           <div className="space-y-8">
-            <ResultsSection result={result} onDownload={handleDownload} darkMode={darkMode} />
+            <MultiSheetResultsSection 
+              result={result} 
+              onDownload={handleDownload} 
+              darkMode={darkMode} 
+            />
             
             {/* Reset Button */}
             <div className="text-center">
@@ -400,22 +397,22 @@ const DataChecker = () => {
             <h3 className={`text-2xl font-bold mb-6 text-center transition-colors duration-300 ${
               darkMode ? 'text-white' : 'text-gray-900'
             }`}>
-              ✨ Fitur Single-Sheet Processing
+              ✨ Fitur Multi-Sheet Processing
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center p-4">
                 <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center ${
                   darkMode ? 'bg-green-900' : 'bg-green-100'
                 }`}>
-                  <span className="text-2xl">🟢</span>
+                  <span className="text-2xl">🔄</span>
                 </div>
                 <h4 className={`font-semibold mb-2 transition-colors duration-300 ${
                   darkMode ? 'text-white' : 'text-gray-900'
-                }`}>Highlight Otomatis</h4>
+                }`}>Multi-Sheet Processing</h4>
                 <p className={`text-sm transition-colors duration-300 ${
                   darkMode ? 'text-gray-300' : 'text-gray-600'
                 }`}>
-                  Data IDPEL baru otomatis ter-highlight dengan warna hijau terang
+                  Proses multiple sheet (DMP, DKP, NGL, RKT, GDN) seperti script Python
                 </p>
               </div>
               <div className="text-center p-4">
@@ -426,26 +423,26 @@ const DataChecker = () => {
                 </div>
                 <h4 className={`font-semibold mb-2 transition-colors duration-300 ${
                   darkMode ? 'text-white' : 'text-gray-900'
-                }`}>Data Terurut</h4>
+                }`}>Laporan Per Sheet</h4>
                 <p className={`text-sm transition-colors duration-300 ${
                   darkMode ? 'text-gray-300' : 'text-gray-600'
                 }`}>
-                  Data baru otomatis terurut di bagian atas untuk kemudahan analisis
+                  Summary detail untuk setiap sheet dengan statistik lengkap
                 </p>
               </div>
               <div className="text-center p-4">
                 <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center ${
                   darkMode ? 'bg-purple-900' : 'bg-purple-100'
                 }`}>
-                  <span className="text-2xl">⚡</span>
+                  <span className="text-2xl">🆕</span>
                 </div>
                 <h4 className={`font-semibold mb-2 transition-colors duration-300 ${
                   darkMode ? 'text-white' : 'text-gray-900'
-                }`}>Proses Cepat</h4>
+                }`}>Data Baru Saja</h4>
                 <p className={`text-sm transition-colors duration-300 ${
                   darkMode ? 'text-gray-300' : 'text-gray-600'
                 }`}>
-                  Proses single sheet yang cepat dan efisien untuk analisis harian
+                  Export khusus data IDPEL baru per sheet dan gabungan semua
                 </p>
               </div>
             </div>
@@ -456,4 +453,4 @@ const DataChecker = () => {
   );
 };
 
-export default DataChecker;
+export default MultiSheetDataChecker;

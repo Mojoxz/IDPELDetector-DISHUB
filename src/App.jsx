@@ -3,6 +3,7 @@ import { DarkModeProvider, useDarkMode } from './contexts/DarkModeContext';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import DataCheckerPage from './pages/DataCheckerPage';
+import MultiSheetDataChecker from './pages/MultiSheetDataChecker';
 import AnalyticsPage from './pages/AnalyticsPage';
 import AboutPage from './pages/AboutPage';
 
@@ -18,6 +19,8 @@ const AppContent = () => {
         return <HomePage setCurrentPage={setCurrentPage} />;
       case 'checker':
         return <DataCheckerPage />;
+      case 'multisheet':
+        return <MultiSheetDataChecker />;
       case 'analytics':
         return <AnalyticsPage />;
       case 'about':

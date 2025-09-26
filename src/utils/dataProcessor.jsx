@@ -1,6 +1,10 @@
-// Enhanced dataProcessor.jsx - Compatible with Python logic for multi-sheet processing
+// Enhanced dataProcessor.jsx - Separated functions for better modularity
 
-// Function to read Excel file with ALL SHEETS and progress
+// ============================================================================
+// MULTI-SHEET PROCESSING FUNCTIONS
+// ============================================================================
+
+// Function to read Excel file with ALL SHEETS and progress (Multi-sheet specific)
 export const readExcelFileAllSheets = (file, type, setUploadProgress) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -72,38 +76,6 @@ export const readExcelFileAllSheets = (file, type, setUploadProgress) => {
   });
 };
 
-// Alternative function for single sheet processing (backward compatibility)
-export const readExcelFile = (file, type, setUploadProgress) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onprogress = (e) => {
-      if (e.lengthComputable) {
-        const progress = Math.round((e.loaded / e.total) * 100);
-        setUploadProgress(prev => ({ ...prev, [type]: progress }));
-      }
-    };
-    reader.onload = (e) => {
-      try {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-        script.onload = () => {
-          const data = new Uint8Array(e.target.result);
-          const workbook = window.XLSX.read(data, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = window.XLSX.utils.sheet_to_json(worksheet);
-          resolve(jsonData);
-        };
-        document.head.appendChild(script);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
-  });
-};
-
 // Enhanced function to process data comparison for MULTIPLE SHEETS (Python-like logic)
 export const processDataComparisonMultiSheet = (dataOld, dataNew) => {
   const targetSheets = ["DMP", "DKP", "NGL", "RKT", "GDN"];
@@ -162,31 +134,6 @@ export const processDataComparisonMultiSheet = (dataOld, dataNew) => {
     totalNewAll: totalNewAll,
     totalProcessedAll: totalProcessedAll,
     processedSheets: targetSheets.filter(sheet => results[sheet].status === 'processed')
-  };
-};
-
-// Function to process data comparison with automatic sorting (Single sheet - backward compatibility)
-export const processDataComparison = (dataOld, dataNew) => {
-  const idpelOldSet = new Set(dataOld.map(row => String(row.IDPEL)));
-  const processedData = dataNew.map(row => ({
-    ...row,
-    _IS_NEW_: !idpelOldSet.has(String(row.IDPEL))
-  }));
-
-  // Sort data: NEW data first, then OLD data
-  const sortedData = processedData.sort((a, b) => {
-    if (a._IS_NEW_ && !b._IS_NEW_) return -1;
-    if (!a._IS_NEW_ && b._IS_NEW_) return 1;
-    return 0;
-  });
-
-  const newDataOnly = sortedData.filter(row => row._IS_NEW_);
-
-  return {
-    allData: sortedData,
-    newData: newDataOnly,
-    totalNew: newDataOnly.length,
-    totalAll: sortedData.length
   };
 };
 
@@ -385,7 +332,72 @@ export const downloadExcelMultiSheet = async (multiSheetResult, filename) => {
   }
 };
 
-// Keep all existing functions for backward compatibility
+// ============================================================================
+// SINGLE-SHEET PROCESSING FUNCTIONS
+// ============================================================================
+
+// Function for single sheet processing (backward compatibility)
+export const readExcelFile = (file, type, setUploadProgress) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const progress = Math.round((e.loaded / e.total) * 100);
+        setUploadProgress(prev => ({ ...prev, [type]: progress }));
+      }
+    };
+    reader.onload = (e) => {
+      try {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        script.onload = () => {
+          const data = new Uint8Array(e.target.result);
+          const workbook = window.XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = window.XLSX.utils.sheet_to_json(worksheet);
+          resolve(jsonData);
+        };
+        document.head.appendChild(script);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+};
+
+// Function to process data comparison with automatic sorting (Single sheet)
+export const processDataComparison = (dataOld, dataNew) => {
+  const idpelOldSet = new Set(dataOld.map(row => String(row.IDPEL)));
+  const processedData = dataNew.map(row => ({
+    ...row,
+    _IS_NEW_: !idpelOldSet.has(String(row.IDPEL))
+  }));
+
+  // Sort data: NEW data first, then OLD data
+  const sortedData = processedData.sort((a, b) => {
+    if (a._IS_NEW_ && !b._IS_NEW_) return -1;
+    if (!a._IS_NEW_ && b._IS_NEW_) return 1;
+    return 0;
+  });
+
+  const newDataOnly = sortedData.filter(row => row._IS_NEW_);
+
+  return {
+    allData: sortedData,
+    newData: newDataOnly,
+    totalNew: newDataOnly.length,
+    totalAll: sortedData.length
+  };
+};
+
+// ============================================================================
+// DOWNLOAD FUNCTIONS
+// ============================================================================
+
+// Enhanced function to download Excel with GREEN HIGHLIGHTING (Single sheet)
 export const downloadExcelWithGreenHighlight = async (data, filename) => {
   const loadExcelJS = () => {
     return new Promise((resolve, reject) => {
@@ -617,6 +629,10 @@ export const downloadNewDataOnly = async (data, filename) => {
   return await downloadExcelWithGreenHighlight(newDataOnly, filename);
 };
 
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
 // Function to save processing history
 export const saveToHistory = (fileOldName, fileNewName, result) => {
   const historyItem = {
@@ -628,7 +644,8 @@ export const saveToHistory = (fileOldName, fileNewName, result) => {
     newDataFound: result.totalNewAll || result.totalNew,
     processingTime: result.processingTime || (Math.random() * 5 + 1).toFixed(2),
     status: 'completed',
-    processedSheets: result.processedSheets || []
+    processedSheets: result.processedSheets || [],
+    mode: result.mode || 'single'
   };
 
   const existingHistory = JSON.parse(localStorage.getItem('processingHistory') || '[]');
